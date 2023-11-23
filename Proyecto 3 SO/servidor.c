@@ -65,22 +65,23 @@ int main(int argc, char *argv[]) {
       perror("Error accepting connection");
       return 1;
     }
-
+    // Enviar el src_dir al cliente
+  send(client_sock, argv[1], strlen(argv[1]), 0);
     printf("Connection accepted\n");
 
     // Synchronization: Update directory2 with what directory1 has
     send_file_list(client_sock, argv[1]);
 
     close(socket_desc);
-  } else if (argc == 4) {
+  } else if (argc == 3) {
     // Client code
     int socket_desc;
     struct sockaddr_in server;
     struct message message;
 
-    char *src_dir = argv[1];
-    char *dest_dir = argv[2];
-    char *ip_server = argv[3];
+    // char *src_dir = argv[1];
+    char *dest_dir = argv[1];
+    char *ip_server = argv[2];
 
     socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_desc == -1) {
@@ -96,9 +97,10 @@ int main(int argc, char *argv[]) {
       perror("Error connecting to server");
       return 1;
     }
-
+    char src_dir[256];
+    recv(socket_desc, src_dir, sizeof(src_dir), 0);
     printf("Connected to server\n");
-
+    
     // Wait to receive the list of files and update the local directory
     request_file_list(socket_desc, src_dir, dest_dir);
 
