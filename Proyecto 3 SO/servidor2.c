@@ -222,73 +222,80 @@ void request_file_list(int socket, char *src_dir, char *dest_dir) {
                 // El archivo no tiene una extensión, manejarlo según sea necesario
                 file_extension = "";
             }
-
             char src_file_path[256];
             char dest_file_path[256];
             snprintf(src_file_path, sizeof(src_file_path), "%s/%s", src_dir, file_name);
             snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, file_name);
+
             // Verificar si el archivo tiene un nombre que comienza con "dest_"
             if (strncmp(file_name, "dest_", 5) == 0) {
+            // Ignorar archivos "dest_" que no están en src_dir
+            
                 printf("Ignoring file: %s\n", file_name);
                 token = strtok(NULL, "\n");
                 continue;
-            }
-            // Crear copias de las rutas de los archivos
-            char src_file_path_copy[256];
-            char dest_file_path_copy[256];
-            strcpy(src_file_path_copy, src_file_path);
-            strcpy(dest_file_path_copy, dest_file_path);
-
-            struct stat src_st, dest_st;
-
-            // Get file information for both source and destination
-            stat(src_file_path, &src_st);
-            stat(dest_file_path, &dest_st);
-
-            // Check if the file needs to be updated (based on modification time)
-            if (difftime(dest_st.st_mtime, file_last_updated) > 0) {
-                printf("Conflict: %s has a newer version in %s\n", file_name, dest_dir);
-
-                char new_name[256];
-                snprintf(new_name, sizeof(new_name), "dest_%s%s", file_name, file_extension);
-                snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, new_name);
-
-                // Verificar si el nuevo nombre ya existe, si es así, cambiarlo hasta encontrar un nombre único
-                int count_dest = 1;
-                while (access(dest_file_path, F_OK) == 0) {
-                    snprintf(new_name, sizeof(new_name), "dest_%d%s%s", count_dest,file_name, file_extension);
-                    snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, new_name);
-                    count_dest++;
-                }
-
-                char new_name2[256];
-                snprintf(new_name2, sizeof(new_name2), "src_%s%s", file_name, file_extension);
-                snprintf(src_file_path, sizeof(src_file_path), "%s/%s", src_dir, new_name2);
-
-                int count_scr = 1;
-                while (access(dest_file_path, F_OK) == 0) {
-                    snprintf(new_name2, sizeof(new_name2), "src_%d%s%s", count_scr,file_name, file_extension);
-                    snprintf(src_file_path, sizeof(src_file_path), "%s/%s", src_dir, new_name2);
-                    count_scr++;
-                }
-                // Crear una copia del archivo original en el directorio de destino con el nuevo nombre
-                if (copiarArchivo(file_name, new_name, dest_dir) == 0 && copiarArchivo(file_name, new_name2, src_dir) == 0)  {
-                    char command[256];
-                    snprintf(command, sizeof(command), "rsync -av --delete %s %s", src_file_path_copy, dest_file_path_copy);
-                    system(command);
-                } else {
-                    // Manejar el error si la copia no tiene éxito
-                    printf("Error al copiar el archivo: %s\n", file_name);
-                }
                 
-            } else {
-                // Si no hay conflicto, actualizar el archivo
-                char command[256];
-                snprintf(command, sizeof(command), "rsync -av --delete %s %s", src_file_path, dest_file_path);
-                system(command);
-            }
+            }else{
+                char src_file_path_copy[256];
+                char dest_file_path_copy[256];
+                strcpy(src_file_path_copy, src_file_path);
+                strcpy(dest_file_path_copy, dest_file_path);
 
-            token = strtok(NULL, "\n");
+                
+
+                struct stat src_st, dest_st;
+
+                // Get file information for both source and destination
+                stat(src_file_path, &src_st);
+                stat(dest_file_path, &dest_st);
+
+                // Check if the file needs to be updated (based on modification time)
+                if (difftime(dest_st.st_mtime, file_last_updated) > 0) {
+                    printf("Conflict: %s has a newer version in %s\n", file_name, dest_dir);
+
+                    char new_name[256];
+                    snprintf(new_name, sizeof(new_name), "dest_%s%s", file_name, file_extension);
+                    snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, new_name);
+
+                    // Verificar si el nuevo nombre ya existe, si es así, cambiarlo hasta encontrar un nombre único
+                    int count_dest = 1;
+                    while (access(dest_file_path, F_OK) == 0) {
+                        snprintf(new_name, sizeof(new_name), "%d%s%s", count_dest, file_name, file_extension);
+                        snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, new_name);
+                        count_dest++;
+                    }
+
+                    char new_name2[256];
+                    snprintf(new_name2, sizeof(new_name2), "src_%s%s", file_name, file_extension);
+                    snprintf(src_file_path, sizeof(src_file_path), "%s/%s", src_dir, new_name2);
+
+                    int count_scr = 1;
+                    while (access(dest_file_path, F_OK) == 0) {
+                        snprintf(new_name2, sizeof(new_name2), "%d%s%s", count_scr, file_name, file_extension);
+                        snprintf(src_file_path, sizeof(src_file_path), "%s/%s", src_dir, new_name2);
+                        count_scr++;
+                    }
+                    // Crear una copia del archivo original en el directorio de destino con el nuevo nombre
+                    if (copiarArchivo(file_name, new_name, dest_dir) == 0 && copiarArchivo(file_name, new_name2, src_dir) == 0)  {
+                        char command[256];
+                        snprintf(command, sizeof(command), "rsync -av --exclude='dest_*' %s/ %s/", src_dir, dest_dir);
+                        return system(command);
+                        printf("archivo\n");
+                    } else {
+                        // Manejar el error si la copia no tiene éxito
+                        printf("Error al copiar el archivo: %s\n", file_name);
+                    }
+                    
+                } else {
+                    // Si no hay conflicto, actualizar el archivo
+                    char command[256];
+                    snprintf(command, sizeof(command), "rsync -av --exclude='dest_*' %s/ %s/", src_dir, dest_dir);
+                    return system(command);
+                }
+
+                token = strtok(NULL, "\n");
+                }
+            
         }
     }
 }
