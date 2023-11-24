@@ -163,12 +163,67 @@ void request_file_list(int socket, char *src_dir, char *dest_dir) {
     int bytes_received;
 
     while ((bytes_received = recv(socket, buf, BUF_SIZE, 0)) > 0) {
-        // Replace the hard-coded directory paths with the provided ones
-        char command[256];
-        snprintf(command, sizeof(command), "rsync -av --delete %s/ %s/", src_dir, dest_dir);
-        system(command);
+        // Parse the received file list and update local files if necessary
+        char *token = strtok(buf, "\n");
+
+        while (token != NULL) {
+            char file_name[256];
+            long long int file_size;
+            time_t file_last_updated;
+
+            sscanf(token, "%s %lld %ld", file_name, &file_size, &file_last_updated);
+            char *file_extension = strrchr(file_name, '.');
+            if (file_extension == NULL) {
+                // El archivo no tiene una extensión, manejarlo según sea necesario
+                file_extension = "";
+            }
+
+            // Construct full paths for source and destination files
+            char src_file_path[256];
+            char dest_file_path[256];
+            snprintf(src_file_path, sizeof(src_file_path), "%s/%s", src_dir, file_name);
+            snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, file_name);
+
+            struct stat src_st, dest_st;
+
+            // Get file information for both source and destination
+            stat(src_file_path, &src_st);
+            stat(dest_file_path, &dest_st);
+
+            // Check if the file needs to be updated (based on modification time)
+            if (difftime(dest_st.st_mtime, file_last_updated) > 0) {
+                printf("Conflict: %s has a newer version in %s\n", file_name, dest_dir);
+
+                // Crear un nuevo nombre para el archivo en caso de conflicto
+                char new_name[256];
+                snprintf(new_name, sizeof(new_name), "%.*s_conflict_%ld%s", (int)(file_extension - file_name), file_name, file_last_updated, file_extension);
+                snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, new_name);
+
+                // Comprobar si el nuevo nombre ya existe, si es así, cambiarlo hasta encontrar un nombre único
+                int count = 1;
+                while (access(dest_file_path, F_OK) == 0) {
+                    snprintf(new_name, sizeof(new_name), "%.*s_conflict_%ld_%d%s", (int)(file_extension - file_name), file_name, file_last_updated, count, file_extension);
+                    snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, new_name);
+                    count++;
+                }
+
+                // Crear una copia del archivo en el directorio de destino con el nuevo nombre
+                char copy_command[256];
+                snprintf(copy_command, sizeof(copy_command), "cp %s %s", src_file_path, dest_file_path);
+                system(copy_command);
+                
+            } else {
+                // Si no hay conflicto, actualizar el archivo
+                char command[256];
+                snprintf(command, sizeof(command), "rsync -av --delete %s %s", src_file_path, dest_file_path);
+                system(command);
+            }
+
+            token = strtok(NULL, "\n");
+        }
     }
 }
+
 
 void print_directory_info(char *dir) {
     DIR *dp;
@@ -278,4 +333,3 @@ void inform_file_change(int socket, char *filename) {
 
   fclose(fp);
 }
-
