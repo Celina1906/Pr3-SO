@@ -194,20 +194,19 @@ void request_file_list(int socket, char *src_dir, char *dest_dir) {
             if (difftime(dest_st.st_mtime, file_last_updated) > 0) {
                 printf("Conflict: %s has a newer version in %s\n", file_name, dest_dir);
 
-                // Crear un nuevo nombre para el archivo en caso de conflicto
                 char new_name[256];
-                snprintf(new_name, sizeof(new_name), "%.*s_conflict_%ld%s", (int)(file_extension - file_name), file_name, file_last_updated, file_extension);
+                snprintf(new_name, sizeof(new_name), "%s_conflict_%ld%s", file_name, file_last_updated, file_extension);
                 snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, new_name);
 
-                // Comprobar si el nuevo nombre ya existe, si es así, cambiarlo hasta encontrar un nombre único
+                // Verificar si el nuevo nombre ya existe, si es así, cambiarlo hasta encontrar un nombre único
                 int count = 1;
                 while (access(dest_file_path, F_OK) == 0) {
-                    snprintf(new_name, sizeof(new_name), "%.*s_conflict_%ld_%d%s", (int)(file_extension - file_name), file_name, file_last_updated, count, file_extension);
+                    snprintf(new_name, sizeof(new_name), "%s_conflict_%ld_%d%s", file_name, file_last_updated, count, file_extension);
                     snprintf(dest_file_path, sizeof(dest_file_path), "%s/%s", dest_dir, new_name);
                     count++;
                 }
 
-                // Crear una copia del archivo en el directorio de destino con el nuevo nombre
+                // Crear una copia del archivo original en el directorio de destino con el nuevo nombre
                 char copy_command[256];
                 snprintf(copy_command, sizeof(copy_command), "cp %s %s", src_file_path, dest_file_path);
                 system(copy_command);
@@ -223,6 +222,7 @@ void request_file_list(int socket, char *src_dir, char *dest_dir) {
         }
     }
 }
+
 
 
 void print_directory_info(char *dir) {
