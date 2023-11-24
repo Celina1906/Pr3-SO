@@ -279,4 +279,3 @@ void inform_file_change(int socket, char *filename) {
   fclose(fp);
 }
 
-
