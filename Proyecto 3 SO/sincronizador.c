@@ -1,3 +1,12 @@
+/*
+Proyecto 3 
+
+Estudiantes:
+Celina Madrigal Murillo - 2020059364
+María José Porras Maroto - 2019066056
+
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
